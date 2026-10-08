@@ -4,10 +4,7 @@
 import { useState, useEffect } from '@wordpress/element';
 import apiFetch from '@wordpress/api-fetch';
 
-const { currencySymbol, restUrl, restNonce } = window.orderPilot || {};
-
-apiFetch.use( apiFetch.createRootURLMiddleware( restUrl ) );
-apiFetch.use( apiFetch.createNonceMiddleware( restNonce ) );
+const { currencySymbol } = window.orderPilot || {};
 
 export default function Dashboard() {
 	const [ stats, setStats ] = useState( null );
@@ -22,16 +19,16 @@ export default function Dashboard() {
 
 	return (
 		<div>
-			<div className="op-page-header">
+			<div className="odrplt-page-header">
 				<h1>📊 Dashboard</h1>
 				<p>Your WooCommerce COD automation overview</p>
 			</div>
 
 			{ loading ? (
-				<div className="op-loading-screen"><span className="op-spinner" /></div>
+				<div className="odrplt-loading-screen"><span className="odrplt-spinner" /></div>
 			) : (
 				<>
-					<div className="op-stats-grid">
+					<div className="odrplt-stats-grid">
 						<StatCard
 							label="Orders (This Month)"
 							value={ stats?.total_orders ?? 0 }
@@ -64,28 +61,22 @@ export default function Dashboard() {
 						/>
 					</div>
 
-					<div className="op-card">
-						<div className="op-card-header">
-							<h3 className="op-card-title">Quick Actions</h3>
+					<div className="odrplt-card">
+						<div className="odrplt-card-header">
+							<h3 className="odrplt-card-title">Quick Actions</h3>
 						</div>
 						<div style={ { display: 'flex', gap: '12px', flexWrap: 'wrap' } }>
 							<a
-								href="?page=order-pilot-couriers"
-								className="op-btn op-btn--primary"
+								href="?page=order-pilot-settings&tab=couriers"
+								className="odrplt-btn odrplt-btn--primary"
 							>
 								🚚 Manage Couriers
 							</a>
 							<a
 								href="?page=order-pilot-settings"
-								className="op-btn op-btn--secondary"
+								className="odrplt-btn odrplt-btn--secondary"
 							>
 								⚙️ Settings
-							</a>
-							<a
-								href="?page=order-pilot-logs"
-								className="op-btn op-btn--secondary"
-							>
-								📋 View Logs
 							</a>
 						</div>
 					</div>
@@ -97,10 +88,10 @@ export default function Dashboard() {
 
 function StatCard( { label, value, icon, variant = 'primary' } ) {
 	return (
-		<div className={ `op-stat-card op-stat-card--${ variant }` }>
-			<div className="op-stat-card__label">{ label }</div>
-			<div className="op-stat-card__value">{ value }</div>
-			<div className="op-stat-card__icon">{ icon }</div>
+		<div className={ `odrplt-stat-card odrplt-stat-card--${ variant }` }>
+			<div className="odrplt-stat-card__label">{ label }</div>
+			<div className="odrplt-stat-card__value">{ value }</div>
+			<div className="odrplt-stat-card__icon">{ icon }</div>
 		</div>
 	);
 }

@@ -13,9 +13,9 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Interface OP_Courier_Interface
+ * Interface ODRPLT_Courier_Interface
  */
-interface OP_Courier_Interface {
+interface ODRPLT_Courier_Interface {
 
     /**
      * Return the unique machine slug for this courier.
@@ -73,7 +73,7 @@ interface OP_Courier_Interface {
      * @param string $consignment_id The consignment/parcel ID.
      * @return array|\WP_Error {
      *     On success:
-     *     @type string $status     Normalized status (see OP_Courier_Manager::normalize_status()).
+     *     @type string $status     Normalized status (see ODRPLT_Courier_Manager::normalize_status()).
      *     @type string $raw_status Raw status string from the courier API.
      *     @type mixed  $raw        Full raw API response.
      * }

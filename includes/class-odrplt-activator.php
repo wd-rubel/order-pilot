@@ -12,9 +12,9 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Class OP_Activator
+ * Class ODRPLT_Activator
  */
-class OP_Activator {
+class ODRPLT_Activator {
 
     /**
      * Run activation routines.
@@ -22,8 +22,8 @@ class OP_Activator {
      * @since 1.0.0
      */
     public static function activate(): void {
-        require_once ORDER_PILOT_PATH . 'includes/class-op-database.php';
-        require_once ORDER_PILOT_PATH . 'includes/class-op-settings.php';
+        require_once ORDER_PILOT_PATH . 'includes/class-odrplt-database.php';
+        require_once ORDER_PILOT_PATH . 'includes/class-odrplt-settings.php';
 
         self::create_tables();
         self::set_default_options();
@@ -51,7 +51,7 @@ class OP_Activator {
      *
      * @since 1.0.0
      */
-    private static function create_tables(): void {
+    public static function create_tables(): void {
         global $wpdb;
 
         $charset_collate = $wpdb->get_charset_collate();
@@ -59,7 +59,7 @@ class OP_Activator {
         require_once ABSPATH . 'wp-admin/includes/upgrade.php';
 
         // ── Courier Submission Logs ──────────────────────────────────────────
-        $sql = "CREATE TABLE {$wpdb->prefix}op_courier_logs (
+        $sql = "CREATE TABLE {$wpdb->prefix}odrplt_courier_logs (
             id          BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
             order_id    BIGINT(20) UNSIGNED NOT NULL,
             courier     VARCHAR(50)  NOT NULL,
@@ -77,14 +77,15 @@ class OP_Activator {
         dbDelta( $sql );
 
         // ── Tracking / Pixel Event Logs ──────────────────────────────────────
-        $sql = "CREATE TABLE {$wpdb->prefix}op_tracking_logs (
+        $sql = "CREATE TABLE {$wpdb->prefix}odrplt_tracking_logs (
             id          BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
             order_id    BIGINT(20) UNSIGNED DEFAULT NULL,
             event_name  VARCHAR(100) NOT NULL,
             event_id    VARCHAR(100) DEFAULT NULL,
-            channel     VARCHAR(20)  NOT NULL,
-            payload     LONGTEXT     DEFAULT NULL,
-            created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            channel     VARCHAR(20) NOT NULL,
+            payload     LONGTEXT DEFAULT NULL,
+            http_code   SMALLINT(5) UNSIGNED DEFAULT NULL,
+            created_at  DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
             PRIMARY KEY  (id),
             KEY order_id   (order_id),
             KEY event_name (event_name),
@@ -94,7 +95,7 @@ class OP_Activator {
         dbDelta( $sql );
 
         // ── Courier Consignments ─────────────────────────────────────────────
-        $sql = "CREATE TABLE {$wpdb->prefix}op_consignments (
+        $sql = "CREATE TABLE {$wpdb->prefix}odrplt_consignments (
             id              BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
             order_id        BIGINT(20) UNSIGNED NOT NULL,
             courier         VARCHAR(50)  NOT NULL,
@@ -113,7 +114,7 @@ class OP_Activator {
         dbDelta( $sql );
 
         // ── Fraud Check History (table created in free for hook extensibility)
-        $sql = "CREATE TABLE {$wpdb->prefix}op_fraud_checks (
+        $sql = "CREATE TABLE {$wpdb->prefix}odrplt_fraud_checks (
             id          BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
             order_id    BIGINT(20) UNSIGNED NOT NULL,
             phone       VARCHAR(20)  NOT NULL,
@@ -125,6 +126,20 @@ class OP_Activator {
             KEY order_id  (order_id),
             KEY phone     (phone),
             KEY risk_level (risk_level)
+        ) $charset_collate;";
+        dbDelta( $sql );
+
+        // ── Blocked IPs (Pro: IP-level order blocking) ───────────────────────
+        $sql = "CREATE TABLE {$wpdb->prefix}odrplt_blocked_ips (
+            id          BIGINT(20) UNSIGNED NOT NULL AUTO_INCREMENT,
+            ip_address  VARCHAR(45)  NOT NULL,
+            reason      TEXT         DEFAULT NULL,
+            source      VARCHAR(20)  NOT NULL DEFAULT 'manual',
+            created_at  DATETIME     NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY  (id),
+            UNIQUE KEY ip_address (ip_address),
+            KEY source     (source),
+            KEY created_at (created_at)
         ) $charset_collate;";
         dbDelta( $sql );
     }
@@ -139,7 +154,7 @@ class OP_Activator {
     private static function set_default_options(): void {
         $defaults = [
             'order_pilot_settings'           => [
-                'currency'        => get_woocommerce_currency(),
+                'currency'        => function_exists( 'get_woocommerce_currency' ) ? get_woocommerce_currency() : get_option( 'woocommerce_currency', 'BDT' ),
                 'enable_courier'  => true,
                 'enable_pixel'    => false,
                 'enable_fraud'    => false,

@@ -9,13 +9,13 @@
  *
  * @wordpress-plugin
  * Plugin Name:       Order Pilot
- * Plugin URI:        https://orderpilot.io
+ * Plugin URI:        https://arsyntax.com/asxc-product/order-pilot/
  * Description:       All-in-One WooCommerce COD Automation — Courier Management, Fraud Detection & Meta Conversion Tracking.
  * Version:           1.0.0
  * Requires at least: 6.0
  * Requires PHP:      7.4
  * Author:            Order Pilot
- * Author URI:        https://orderpilot.io
+ * Author URI:        https://arsyntax.com/asxc-product/order-pilot/
  * License:           GPL v2 or later
  * License URI:       https://www.gnu.org/licenses/gpl-2.0.html
  * Text Domain:       order-pilot
@@ -29,7 +29,7 @@ defined( 'ABSPATH' ) || exit;
 // ─── Plugin Constants ─────────────────────────────────────────────────────────
 
 define( 'ORDER_PILOT_VERSION',    '1.0.0' );
-define( 'ORDER_PILOT_DB_VERSION', '1.0.0' );
+define( 'ORDER_PILOT_DB_VERSION', '1.0.2' );
 define( 'ORDER_PILOT_FILE',       __FILE__ );
 define( 'ORDER_PILOT_PATH',       plugin_dir_path( __FILE__ ) );
 define( 'ORDER_PILOT_URL',        plugin_dir_url( __FILE__ ) );
@@ -45,28 +45,35 @@ define( 'ORDER_PILOT_SLUG',       'order-pilot' );
 spl_autoload_register( function ( $class ) {
     $prefixes = [
         'Order_Pilot' => ORDER_PILOT_PATH . 'includes/class-order-pilot.php',
-        'OP_Loader'   => ORDER_PILOT_PATH . 'includes/class-op-loader.php',
-        'OP_Activator'   => ORDER_PILOT_PATH . 'includes/class-op-activator.php',
-        'OP_Deactivator' => ORDER_PILOT_PATH . 'includes/class-op-deactivator.php',
-        'OP_License'     => ORDER_PILOT_PATH . 'includes/class-op-license.php',
-        'OP_Settings'    => ORDER_PILOT_PATH . 'includes/class-op-settings.php',
-        'OP_Database'    => ORDER_PILOT_PATH . 'includes/class-op-database.php',
-        'OP_Logger'      => ORDER_PILOT_PATH . 'includes/class-op-logger.php',
-        'OP_Admin'       => ORDER_PILOT_PATH . 'admin/class-op-admin.php',
-        'OP_Admin_Menu'  => ORDER_PILOT_PATH . 'admin/class-op-admin-menu.php',
-        'OP_Rest_Api'    => ORDER_PILOT_PATH . 'admin/class-op-rest-api.php',
+        'ODRPLT_Loader'   => ORDER_PILOT_PATH . 'includes/class-odrplt-loader.php',
+        'ODRPLT_Activator'   => ORDER_PILOT_PATH . 'includes/class-odrplt-activator.php',
+        'ODRPLT_Deactivator' => ORDER_PILOT_PATH . 'includes/class-odrplt-deactivator.php',
+        'ODRPLT_License'     => ORDER_PILOT_PATH . 'includes/class-odrplt-license.php',
+        'ODRPLT_Settings'    => ORDER_PILOT_PATH . 'includes/class-odrplt-settings.php',
+        'ODRPLT_Database'    => ORDER_PILOT_PATH . 'includes/class-odrplt-database.php',
+        'ODRPLT_Logger'      => ORDER_PILOT_PATH . 'includes/class-odrplt-logger.php',
+        'ODRPLT_Admin'       => ORDER_PILOT_PATH . 'admin/class-odrplt-admin.php',
+        'ODRPLT_Admin_Menu'  => ORDER_PILOT_PATH . 'admin/class-odrplt-admin-menu.php',
+        'ODRPLT_Rest_Api'    => ORDER_PILOT_PATH . 'admin/class-odrplt-rest-api.php',
         // Couriers
-        'OP_Courier_Interface' => ORDER_PILOT_PATH . 'includes/couriers/interface-op-courier.php',
-        'OP_Courier_Manager'   => ORDER_PILOT_PATH . 'includes/couriers/class-op-courier-manager.php',
-        'OP_Courier_Steadfast' => ORDER_PILOT_PATH . 'includes/couriers/class-op-courier-steadfast.php',
-        'OP_Courier_Pathao'    => ORDER_PILOT_PATH . 'includes/couriers/class-op-courier-pathao.php',
-        'OP_Courier_RedX'      => ORDER_PILOT_PATH . 'includes/couriers/class-op-courier-redx.php',
+        'ODRPLT_Courier_Interface' => ORDER_PILOT_PATH . 'includes/couriers/interface-odrplt-courier.php',
+        'ODRPLT_Courier_Manager'   => ORDER_PILOT_PATH . 'includes/couriers/class-odrplt-courier-manager.php',
+        'ODRPLT_Courier_Steadfast' => ORDER_PILOT_PATH . 'includes/couriers/class-odrplt-courier-steadfast.php',
+        'ODRPLT_Courier_Pathao'    => ORDER_PILOT_PATH . 'includes/couriers/class-odrplt-courier-pathao.php',
+        'ODRPLT_Courier_RedX'      => ORDER_PILOT_PATH . 'includes/couriers/class-odrplt-courier-redx.php',
         // WooCommerce
-        'OP_WC_Integration'  => ORDER_PILOT_PATH . 'includes/woocommerce/class-op-wc-integration.php',
-        'OP_Order_Actions'   => ORDER_PILOT_PATH . 'includes/woocommerce/class-op-order-actions.php',
+        'ODRPLT_WC_Integration'  => ORDER_PILOT_PATH . 'includes/woocommerce/class-odrplt-wc-integration.php',
+        'ODRPLT_Order_Actions'   => ORDER_PILOT_PATH . 'includes/woocommerce/class-odrplt-order-actions.php',
         // Tracking
-        'OP_Pixel'            => ORDER_PILOT_PATH . 'includes/tracking/class-op-pixel.php',
-        'OP_Tracking_Manager' => ORDER_PILOT_PATH . 'includes/tracking/class-op-tracking-manager.php',
+        'ODRPLT_Cookie_Helper'    => ORDER_PILOT_PATH . 'includes/tracking/class-odrplt-cookie-helper.php',
+        'ODRPLT_Pixel'            => ORDER_PILOT_PATH . 'includes/tracking/class-odrplt-pixel.php',
+        'ODRPLT_Tracking_Manager' => ORDER_PILOT_PATH . 'includes/tracking/class-odrplt-tracking-manager.php',
+        // Fraud
+        'ODRPLT_Fraud_Checker'   => ORDER_PILOT_PATH . 'includes/fraud/class-odrplt-fraud-checker.php',
+        'ODRPLT_Fraud_Score'     => ORDER_PILOT_PATH . 'includes/fraud/class-odrplt-fraud-score.php',
+        'ODRPLT_Fraud_BDCourier' => ORDER_PILOT_PATH . 'includes/fraud/class-odrplt-fraud-bdcourier.php',
+        'ODRPLT_Fraud_Steadfast' => ORDER_PILOT_PATH . 'includes/fraud/class-odrplt-fraud-steadfast.php',
+        'ODRPLT_Fraud_Pathao'    => ORDER_PILOT_PATH . 'includes/fraud/class-odrplt-fraud-pathao.php',
     ];
 
     if ( isset( $prefixes[ $class ] ) && file_exists( $prefixes[ $class ] ) ) {
@@ -77,13 +84,13 @@ spl_autoload_register( function ( $class ) {
 // ─── Activation / Deactivation ────────────────────────────────────────────────
 
 register_activation_hook( __FILE__, function () {
-    require_once ORDER_PILOT_PATH . 'includes/class-op-activator.php';
-    OP_Activator::activate();
+    require_once ORDER_PILOT_PATH . 'includes/class-odrplt-activator.php';
+    ODRPLT_Activator::activate();
 } );
 
 register_deactivation_hook( __FILE__, function () {
-    require_once ORDER_PILOT_PATH . 'includes/class-op-deactivator.php';
-    OP_Deactivator::deactivate();
+    require_once ORDER_PILOT_PATH . 'includes/class-odrplt-deactivator.php';
+    ODRPLT_Deactivator::deactivate();
 } );
 
 // ─── Declare WooCommerce HPOS Compatibility ───────────────────────────────────
@@ -92,6 +99,11 @@ add_action( 'before_woocommerce_init', function () {
     if ( class_exists( \Automattic\WooCommerce\Utilities\FeaturesUtil::class ) ) {
         \Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility(
             'custom_order_tables',
+            __FILE__,
+            true
+        );
+        \Automattic\WooCommerce\Utilities\FeaturesUtil::declare_compatibility(
+            'cart_checkout_blocks',
             __FILE__,
             true
         );

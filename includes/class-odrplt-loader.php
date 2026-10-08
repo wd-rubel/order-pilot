@@ -12,11 +12,11 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Class OP_Loader
+ * Class ODRPLT_Loader
  *
  * Collects and runs all hook registrations for the plugin.
  */
-class OP_Loader {
+class ODRPLT_Loader {
 
     /**
      * Registered actions.

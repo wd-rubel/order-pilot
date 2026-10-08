@@ -13,9 +13,10 @@ import Dashboard from './pages/Dashboard/Dashboard';
 import Orders from './pages/Orders/Orders';
 import Couriers from './pages/Couriers/Couriers';
 import Tracking from './pages/Tracking/Tracking';
-import Logs from './pages/Logs/Logs';
 import Settings from './pages/Settings/Settings';
 import ProGate from './pages/ProGate/ProGate';
+import Fraud from './pages/Fraud/Fraud';
+import IncompleteOrders from './pages/IncompleteOrders/IncompleteOrders';
 
 const { isPro } = window.orderPilot || {};
 
@@ -23,15 +24,13 @@ const { isPro } = window.orderPilot || {};
  * Route map: page slug → component
  */
 const ROUTES = {
-	'order-pilot':           Dashboard,
-	'order-pilot-orders':    Orders,
-	'order-pilot-couriers':  Couriers,
-	'order-pilot-tracking':  Tracking,
-	'order-pilot-logs':      Logs,
-	'order-pilot-settings':  Settings,
-	// Pro-gated pages — show ProGate when not licensed.
-	'order-pilot-fraud':     isPro ? () => <div>Fraud Checker</div> : ProGate,
-	'order-pilot-analytics': isPro ? () => <div>Analytics</div>     : ProGate,
+	'order-pilot':                   Dashboard,
+	'order-pilot-orders':            Orders,
+	'order-pilot-couriers':          Couriers,
+	'order-pilot-tracking':          Tracking,
+	'order-pilot-settings':          Settings,
+	'order-pilot-fraud':             Fraud,
+	'order-pilot-incomplete-orders': isPro ? IncompleteOrders : ProGate,
 };
 
 export default function App() {

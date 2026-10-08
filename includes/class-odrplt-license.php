@@ -16,13 +16,13 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Class OP_License
+ * Class ODRPLT_License
  *
  * Fallback license class. All methods are filterable so the pro plugin
  * (or a future license server integration) can override them without
  * touching this file.
  */
-class OP_License {
+class ODRPLT_License {
 
     /**
      * License status constants.

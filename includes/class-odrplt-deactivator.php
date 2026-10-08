@@ -9,13 +9,13 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Class OP_Deactivator
+ * Class ODRPLT_Deactivator
  *
  * Runs cleanup logic on plugin deactivation.
  * Note: Tables and options are deliberately NOT deleted here.
  * Full uninstall cleanup belongs in uninstall.php.
  */
-class OP_Deactivator {
+class ODRPLT_Deactivator {
 
     /**
      * Run deactivation routines.

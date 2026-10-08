@@ -3,7 +3,8 @@
  * Admin Menu
  *
  * Registers the Order Pilot admin menu and sub-pages.
- * Pro pages are always visible but show an upgrade prompt when not licensed.
+ * The "Orders" entry redirects to WooCommerce's native order screen
+ * (HPOS-compatible), so WooCommerce remains the single source of truth.
  *
  * @package OrderPilot
  * @since   1.0.0
@@ -12,21 +13,21 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Class OP_Admin_Menu
+ * Class ODRPLT_Admin_Menu
  */
-class OP_Admin_Menu {
+class ODRPLT_Admin_Menu {
 
     /**
-     * @var OP_License
+     * @var ODRPLT_License
      */
-    private OP_License $license;
+    private ODRPLT_License $license;
 
     /**
      * Constructor.
      *
-     * @param OP_License $license
+     * @param ODRPLT_License $license
      */
-    public function __construct( OP_License $license ) {
+    public function __construct( ODRPLT_License $license ) {
         $this->license = $license;
     }
 
@@ -57,7 +58,7 @@ class OP_Admin_Menu {
         /**
          * Filter: admin sub-pages registered under Order Pilot.
          *
-         * Pro adds Fraud Checker and Analytics pages here.
+         * Pro adds Fraud Checker page here.
          *
          * @since 1.0.0
          * @param array $pages Array of page definitions.
@@ -72,7 +73,7 @@ class OP_Admin_Menu {
             // Label with "PRO" badge for locked features.
             $menu_title = $page['title'];
             if ( ! empty( $page['pro'] ) && ! $this->license->is_pro() ) {
-                $menu_title .= ' <span class="op-pro-badge">PRO</span>';
+                $menu_title .= ' <span class="odrplt-pro-badge">PRO</span>';
             }
 
             add_submenu_page(
@@ -84,10 +85,73 @@ class OP_Admin_Menu {
                 [ $this, 'render_page' ]
             );
         }
+
+        // ── Orders redirect (injected directly into global $submenu) ────────
+        // We inject a raw URL entry rather than a WordPress-registered page so
+        // clicking it navigates straight to WooCommerce's native order screen.
+        // This avoids duplicating WC order management and is HPOS-compatible.
+        $this->inject_orders_redirect_link();
+    }
+
+    /**
+     * Inject the "Orders" submenu entry that links to WooCommerce's native
+     * order listing screen (HPOS or legacy).
+     *
+     * WordPress does not officially support external URLs in submenus, but
+     * directly appending to `$submenu` is the standard community practice and
+     * is safe as long as the current user has the required capability.
+     *
+     * @since 1.0.0
+     */
+    private function inject_orders_redirect_link(): void {
+        global $submenu;
+
+        if ( ! current_user_can( 'manage_woocommerce' ) ) {
+            return;
+        }
+
+        $wc_orders_url = $this->get_wc_orders_url();
+
+        // WP submenu format: [ page_title, capability, url, menu_title ]
+        // Insert after index 0 (Dashboard) so Orders appears second.
+        $orders_entry = [
+            __( 'Orders', 'order-pilot' ),
+            'manage_woocommerce',
+            $wc_orders_url,
+            __( 'Orders', 'order-pilot' ),
+        ];
+
+        if ( isset( $submenu['order-pilot'] ) ) {
+            // Splice in after the first entry (Dashboard).
+            array_splice( $submenu['order-pilot'], 1, 0, [ $orders_entry ] );
+        } else {
+            $submenu['order-pilot'][] = $orders_entry; // phpcs:ignore WordPress.WP.GlobalVariablesOverride.Prohibited
+        }
+    }
+
+    /**
+     * Get the WooCommerce orders admin URL, detecting HPOS vs. legacy mode.
+     *
+     * @since 1.0.0
+     * @return string
+     */
+    public static function get_wc_orders_url(): string {
+        // Official WC 7.1+ API for HPOS detection.
+        if (
+            class_exists( '\Automattic\WooCommerce\Utilities\OrderUtil' ) &&
+            \Automattic\WooCommerce\Utilities\OrderUtil::custom_orders_table_usage_is_enabled()
+        ) {
+            return admin_url( 'admin.php?page=wc-orders' );
+        }
+
+        // Legacy (CPT-based) orders screen.
+        return admin_url( 'edit.php?post_type=shop_order' );
     }
 
     /**
      * Get the core sub-page definitions.
+     * The "Orders" page is intentionally absent — it is injected as a
+     * redirect link via inject_orders_redirect_link().
      *
      * @since 1.0.0
      * @return array
@@ -101,38 +165,14 @@ class OP_Admin_Menu {
                 'pro'        => false,
             ],
             [
-                'slug'       => 'order-pilot-orders',
-                'title'      => __( 'Orders', 'order-pilot' ),
-                'capability' => 'manage_woocommerce',
-                'pro'        => false,
-            ],
-            [
                 'slug'       => 'order-pilot-fraud',
                 'title'      => __( 'Fraud Checker', 'order-pilot' ),
-                'capability' => 'manage_woocommerce',
-                'pro'        => true,
-            ],
-            [
-                'slug'       => 'order-pilot-couriers',
-                'title'      => __( 'Couriers', 'order-pilot' ),
                 'capability' => 'manage_woocommerce',
                 'pro'        => false,
             ],
             [
                 'slug'       => 'order-pilot-tracking',
                 'title'      => __( 'Tracking', 'order-pilot' ),
-                'capability' => 'manage_woocommerce',
-                'pro'        => false,
-            ],
-            [
-                'slug'       => 'order-pilot-analytics',
-                'title'      => __( 'Analytics', 'order-pilot' ),
-                'capability' => 'manage_woocommerce',
-                'pro'        => true,
-            ],
-            [
-                'slug'       => 'order-pilot-logs',
-                'title'      => __( 'Logs', 'order-pilot' ),
                 'capability' => 'manage_woocommerce',
                 'pro'        => false,
             ],
@@ -155,10 +195,11 @@ class OP_Admin_Menu {
      * @since 1.0.0
      */
     public function render_page(): void {
-        $current_page = sanitize_key( $_GET['page'] ?? 'order-pilot' );
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- Safe read-only view parameter for mounting the React SPA.
+        $current_page = sanitize_key( wp_unslash( $_GET['page'] ?? 'order-pilot' ) );
 
         echo '<div id="order-pilot-root" class="order-pilot-admin" data-page="' . esc_attr( $current_page ) . '">';
-        echo '<div class="op-loading-screen"><span class="op-spinner"></span></div>';
+        echo '<div class="odrplt-loading-screen"><span class="odrplt-spinner"></span></div>';
         echo '</div>';
     }
 

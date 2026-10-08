@@ -5,8 +5,8 @@ import './Layout.css';
 
 export default function Layout( { children, currentPage } ) {
 	return (
-		<div className="op-layout">
-			<main className="op-content">
+		<div className="odrplt-layout">
+			<main className="odrplt-content">
 				{ children }
 			</main>
 		</div>

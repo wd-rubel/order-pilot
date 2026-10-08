@@ -12,9 +12,9 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Class OP_Courier_Manager
+ * Class ODRPLT_Courier_Manager
  */
-class OP_Courier_Manager {
+class ODRPLT_Courier_Manager {
 
     /**
      * Normalized courier status constants.
@@ -30,35 +30,35 @@ class OP_Courier_Manager {
     const STATUS_UNKNOWN        = 'unknown';
 
     /**
-     * @var OP_Settings
+     * @var ODRPLT_Settings
      */
-    private OP_Settings $settings;
+    private ODRPLT_Settings $settings;
 
     /**
-     * @var OP_Logger
+     * @var ODRPLT_Logger
      */
-    private OP_Logger $logger;
+    private ODRPLT_Logger $logger;
 
     /**
-     * @var OP_License
+     * @var ODRPLT_License
      */
-    private OP_License $license;
+    private ODRPLT_License $license;
 
     /**
      * Lazy-loaded registered courier adapters.
      *
-     * @var OP_Courier_Interface[]|null
+     * @var ODRPLT_Courier_Interface[]|null
      */
     private ?array $couriers = null;
 
     /**
      * Constructor.
      *
-     * @param OP_Settings $settings
-     * @param OP_Logger   $logger
-     * @param OP_License  $license
+     * @param ODRPLT_Settings $settings
+     * @param ODRPLT_Logger   $logger
+     * @param ODRPLT_License  $license
      */
-    public function __construct( OP_Settings $settings, OP_Logger $logger, OP_License $license ) {
+    public function __construct( ODRPLT_Settings $settings, ODRPLT_Logger $logger, ODRPLT_License $license ) {
         $this->settings = $settings;
         $this->logger   = $logger;
         $this->license  = $license;
@@ -73,7 +73,7 @@ class OP_Courier_Manager {
      * can add additional couriers without modifying the free plugin.
      *
      * @since 1.0.0
-     * @return OP_Courier_Interface[]  Keyed by courier slug.
+     * @return ODRPLT_Courier_Interface[]  Keyed by courier slug.
      */
     public function get_all(): array {
         if ( null === $this->couriers ) {
@@ -84,14 +84,14 @@ class OP_Courier_Manager {
              * in Order_Pilot::register_core_couriers(). Pro plugin adds more at 10+.
              *
              * @since 1.0.0
-             * @param OP_Courier_Interface[] $couriers Initial empty array.
+             * @param ODRPLT_Courier_Interface[] $couriers Initial empty array.
              */
             $couriers = (array) apply_filters( 'order_pilot_couriers', [] );
 
             // Ensure each value implements the interface.
             $this->couriers = array_filter(
                 $couriers,
-                fn( $c ) => $c instanceof OP_Courier_Interface
+                fn( $c ) => $c instanceof ODRPLT_Courier_Interface
             );
         }
 
@@ -103,9 +103,9 @@ class OP_Courier_Manager {
      *
      * @since 1.0.0
      * @param string $slug
-     * @return OP_Courier_Interface|null
+     * @return ODRPLT_Courier_Interface|null
      */
-    public function get( string $slug ): ?OP_Courier_Interface {
+    public function get( string $slug ): ?ODRPLT_Courier_Interface {
         return $this->get_all()[ $slug ] ?? null;
     }
 
@@ -113,7 +113,7 @@ class OP_Courier_Manager {
      * Get only the couriers that are connected (active credentials saved).
      *
      * @since 1.0.0
-     * @return OP_Courier_Interface[]
+     * @return ODRPLT_Courier_Interface[]
      */
     public function get_connected(): array {
         $connected_slugs = $this->settings->get_connected_couriers();
@@ -158,10 +158,10 @@ class OP_Courier_Manager {
 
         $max = $this->license->max_couriers();
         if ( count( $connected ) >= $max ) {
-            /* translators: %d: max courier count */
             return new \WP_Error(
                 'courier_limit_reached',
                 sprintf(
+                    /* translators: %d: max courier count */
                     __( 'You can connect a maximum of %d couriers on your current plan. Upgrade to Pro for unlimited connections.', 'order-pilot' ),
                     $max
                 )
@@ -226,6 +226,13 @@ class OP_Courier_Manager {
             return new \WP_Error( 'invalid_order', __( 'Order not found.', 'order-pilot' ) );
         }
 
+        if ( 'block' === $order->get_meta( '_odrplt_fraud_action', true ) ) {
+            return new \WP_Error(
+                'fraud_blocked',
+                __( 'This order is blocked by its fraud-risk policy and cannot be sent to a courier.', 'order-pilot' )
+            );
+        }
+
         $courier = $this->get( $courier_slug );
 
         if ( ! $courier ) {
@@ -249,7 +256,7 @@ class OP_Courier_Manager {
         $result = $courier->create_order( $order, $extra_data );
 
         if ( is_wp_error( $result ) ) {
-            $this->logger->courier_failed( $order_id, $courier_slug, OP_Logger::ACTION_CREATE, $result );
+            $this->logger->courier_failed( $order_id, $courier_slug, ODRPLT_Logger::ACTION_CREATE, $result, $extra_data );
 
             /**
              * Fires when a courier send fails.
@@ -262,24 +269,29 @@ class OP_Courier_Manager {
             do_action( 'order_pilot_courier_send_failed', $order_id, $courier_slug, $result );
 
         } else {
-            // Save consignment data.
-            global $order_pilot;
-            if ( isset( $order_pilot ) ) {
-                $order_pilot->db->upsert_consignment( [
+            // Save consignment data into database table.
+            global $wpdb;
+            // phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching -- Custom consignment table update.
+            $wpdb->replace(
+                $wpdb->prefix . 'odrplt_consignments',
+                [
                     'order_id'       => $order_id,
                     'courier'        => $courier_slug,
-                    'consignment_id' => $result['consignment_id'] ?? '',
-                    'tracking_id'    => $result['tracking_id'] ?? $result['consignment_id'] ?? '',
-                    'status'         => $result['status'] ?? self::STATUS_PENDING,
-                ] );
-            }
+                    'consignment_id' => (string) ( $result['consignment_id'] ?? '' ),
+                    'tracking_id'    => (string) ( $result['tracking_id'] ?? $result['consignment_id'] ?? '' ),
+                    'status'         => (string) ( $result['status'] ?? self::STATUS_PENDING ),
+                    'created_at'     => current_time( 'mysql' ),
+                    'last_synced_at' => current_time( 'mysql' ),
+                ],
+                [ '%d', '%s', '%s', '%s', '%s', '%s', '%s' ]
+            );
 
-            $this->logger->courier_success( $order_id, $courier_slug, OP_Logger::ACTION_CREATE, $result );
+            $this->logger->courier_success( $order_id, $courier_slug, ODRPLT_Logger::ACTION_CREATE, $result['raw'] ?? $result, $extra_data );
 
             // Store basic meta on the order itself.
-            $order->update_meta_data( '_op_courier', $courier_slug );
-            $order->update_meta_data( '_op_consignment_id', $result['consignment_id'] ?? '' );
-            $order->update_meta_data( '_op_tracking_id', $result['tracking_id'] ?? '' );
+            $order->update_meta_data( '_odrplt_courier', $courier_slug );
+            $order->update_meta_data( '_odrplt_consignment_id', $result['consignment_id'] ?? '' );
+            $order->update_meta_data( '_odrplt_tracking_id', $result['tracking_id'] ?? '' );
             $order->save_meta_data();
 
             /**

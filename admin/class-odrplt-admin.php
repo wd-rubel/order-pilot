@@ -11,27 +11,27 @@
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Class OP_Admin
+ * Class ODRPLT_Admin
  */
-class OP_Admin {
+class ODRPLT_Admin {
 
     /**
-     * @var OP_Settings
+     * @var ODRPLT_Settings
      */
-    private OP_Settings $settings;
+    private ODRPLT_Settings $settings;
 
     /**
-     * @var OP_License
+     * @var ODRPLT_License
      */
-    private OP_License $license;
+    private ODRPLT_License $license;
 
     /**
      * Constructor.
      *
-     * @param OP_Settings $settings
-     * @param OP_License  $license
+     * @param ODRPLT_Settings $settings
+     * @param ODRPLT_License  $license
      */
-    public function __construct( OP_Settings $settings, OP_License $license ) {
+    public function __construct( ODRPLT_Settings $settings, ODRPLT_License $license ) {
         $this->settings = $settings;
         $this->license  = $license;
     }
@@ -46,7 +46,7 @@ class OP_Admin {
      * @param string $hook_suffix Current admin page hook suffix.
      */
     public function enqueue_scripts( string $hook_suffix ): void {
-        if ( ! $this->is_op_page( $hook_suffix ) ) {
+        if ( ! $this->is_odrplt_page( $hook_suffix ) ) {
             return;
         }
 
@@ -77,6 +77,12 @@ class OP_Admin {
 
         // Localize data for the React app.
         wp_localize_script( 'order-pilot-admin', 'orderPilot', $this->get_localized_data() );
+
+        // Standard WordPress REST API settings for @wordpress/api-fetch
+        wp_localize_script( 'order-pilot-admin', 'wpApiSettings', [
+            'root'  => esc_url_raw( rest_url() ),
+            'nonce' => wp_create_nonce( 'wp_rest' ),
+        ] );
     }
 
     /**
@@ -99,9 +105,13 @@ class OP_Admin {
             'pluginUrl'   => ORDER_PILOT_URL,
             'settings'    => [
                 'general'  => $this->settings->get_general(),
+                'couriers' => [
+                    'enable_courier' => $this->settings->is_courier_enabled(),
+                ],
                 'pixel'    => [
-                    'pixel_id' => $this->settings->get_pixel_id(),
-                    'events'   => $this->settings->get_pixel()['events'] ?? [],
+                    'enable_pixel'     => $this->settings->is_pixel_enabled(),
+                    'pixel_id'         => $this->settings->get_pixel_id(),
+                    'events'           => $this->settings->get_pixel()['events'] ?? [],
                     'purchase_trigger' => $this->settings->get_purchase_trigger(),
                 ],
             ],
@@ -128,14 +138,14 @@ class OP_Admin {
      */
     public function handle_settings_save(): void {
         if (
-            ! isset( $_POST['op_settings_nonce'] )
-            || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['op_settings_nonce'] ) ), 'op_save_settings' )
+            ! isset( $_POST['odrplt_settings_nonce'] )
+            || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['odrplt_settings_nonce'] ) ), 'odrplt_save_settings' )
             || ! current_user_can( 'manage_options' )
         ) {
             return;
         }
 
-        $tab = sanitize_key( $_POST['op_tab'] ?? 'general' );
+        $tab = sanitize_key( $_POST['odrplt_tab'] ?? 'general' );
 
         /**
          * Fires when admin settings are saved.
@@ -158,7 +168,7 @@ class OP_Admin {
      * @param string $hook_suffix
      * @return bool
      */
-    private function is_op_page( string $hook_suffix ): bool {
+    private function is_odrplt_page( string $hook_suffix ): bool {
         // All OP pages start with 'toplevel_page_order-pilot' or have 'order-pilot' in the hook.
         return str_contains( $hook_suffix, 'order-pilot' );
     }

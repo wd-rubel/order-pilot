@@ -166,11 +166,6 @@ class ODRPLT_Courier_Pathao implements ODRPLT_Courier_Interface {
      * @return array|\WP_Error
      */
     public function create_order( \WC_Order $order, array $extra_data = [] ) {
-        $token = $this->get_access_token();
-
-        if ( is_wp_error( $token ) ) {
-            return $token;
-        }
 
         $payload = $this->build_order_data( $order, $extra_data );
 
@@ -189,7 +184,9 @@ class ODRPLT_Courier_Pathao implements ODRPLT_Courier_Interface {
         $payload = (array) apply_filters( 'order_pilot_courier_payload', $payload, $order, $extra_data );
         $payload = (array) apply_filters( 'order_pilot_pathao_payload', $payload, $order, $extra_data );
 
-        $response = $this->request( 'POST', '/aladdin/api/v1/orders', $payload, $token );
+        $response = $this->request_with_retry( 'POST', '/aladdin/api/v1/orders', $payload );
+
+        error_log( 'pathao response: ' . print_r( $response, true ) );
 
         if ( is_wp_error( $response ) ) {
             return $response;
@@ -231,13 +228,8 @@ class ODRPLT_Courier_Pathao implements ODRPLT_Courier_Interface {
      * Endpoint: GET /aladdin/api/v1/orders/{consignment_id}/info
      */
     public function get_status( string $consignment_id ) {
-        $token = $this->get_access_token();
 
-        if ( is_wp_error( $token ) ) {
-            return $token;
-        }
-
-        $response = $this->request( 'GET', "/aladdin/api/v1/orders/{$consignment_id}/info", [], $token );
+        $response = $this->request_with_retry( 'GET', "/aladdin/api/v1/orders/{$consignment_id}/info" );
 
         if ( is_wp_error( $response ) ) {
             return $response;
@@ -265,17 +257,11 @@ class ODRPLT_Courier_Pathao implements ODRPLT_Courier_Interface {
      * {@inheritDoc}
      */
     public function cancel_order( string $consignment_id ) {
-        $token = $this->get_access_token();
 
-        if ( is_wp_error( $token ) ) {
-            return $token;
-        }
-
-        $response = $this->request(
+        $response = $this->request_with_retry(
             'POST',
             '/aladdin/api/v1/orders/cancel',
-            [ 'consignment_id' => $consignment_id, 'order_id' => $consignment_id ],
-            $token
+            [ 'consignment_id' => $consignment_id, 'order_id' => $consignment_id ]
         );
 
         if ( is_wp_error( $response ) ) {
@@ -300,13 +286,8 @@ class ODRPLT_Courier_Pathao implements ODRPLT_Courier_Interface {
      * @return array|\WP_Error
      */
     public function get_stores() {
-        $token = $this->get_access_token();
 
-        if ( is_wp_error( $token ) ) {
-            return $token;
-        }
-
-        $response = $this->request( 'GET', '/aladdin/api/v1/stores', [], $token );
+        $response = $this->request_with_retry( 'GET', '/aladdin/api/v1/stores' );
 
         if ( is_wp_error( $response ) ) {
             return $response;
@@ -422,7 +403,7 @@ class ODRPLT_Courier_Pathao implements ODRPLT_Courier_Interface {
         $response = wp_remote_post(
             $this->get_api_base() . '/aladdin/api/v1/issue-token',
             [
-                'timeout' => 30,
+                'timeout' => 45,
                 'headers' => [
                     'Content-Type' => 'application/json',
                     'Accept'       => 'application/json',
@@ -551,7 +532,94 @@ class ODRPLT_Courier_Pathao implements ODRPLT_Courier_Interface {
     // ─── HTTP ─────────────────────────────────────────────────────────────────
 
     /**
-     * Make an authenticated request to the Pathao API.
+     * Clear the cached access token for the current environment.
+     *
+     * Called automatically when the API returns 401/403 so the next attempt
+     * fetches a fresh token instead of reusing a stale/revoked one.
+     *
+     * @since 1.0.0
+     * @return void
+     */
+    private function clear_token_cache(): void {
+        delete_transient( $this->get_token_key() );
+    }
+
+    /**
+     * Make an authenticated request to the Pathao API with automatic retries.
+     *
+     * Retries up to 3 times on 5xx errors (e.g. HTTP 522 Cloudflare timeout)
+     * with a 1-second pause between each attempt. On 401/403 the cached token
+     * is cleared and a fresh token is obtained before the next attempt.
+     *
+     * @since 1.0.0
+     * @param string $method   HTTP verb (GET, POST, …)
+     * @param string $endpoint API path, e.g. '/aladdin/api/v1/orders'
+     * @param array  $body     Request body (JSON-encoded for mutating verbs).
+     * @param int    $max_attempts Maximum number of attempts (default 3).
+     * @return array|\WP_Error Raw wp_remote_* response array or WP_Error.
+     */
+    private function request_with_retry(
+        string $method,
+        string $endpoint,
+        array  $body         = [],
+        int    $max_attempts = 3
+    ) {
+        $last_response = null;
+
+        for ( $attempt = 1; $attempt <= $max_attempts; $attempt++ ) {
+
+            // Always fetch (possibly cached) token at the start of each attempt.
+            $token = $this->get_access_token();
+            if ( is_wp_error( $token ) ) {
+                return $token;
+            }
+
+            $response = $this->request( $method, $endpoint, $body, $token );
+            $last_response = $response;
+
+            // Hard WP_Error (DNS/SSL/timeout at socket level) — retry immediately.
+            if ( is_wp_error( $response ) ) {
+                if ( $attempt < $max_attempts ) {
+                    sleep( $attempt ); // 1s, 2s back-off
+                    continue;
+                }
+                break;
+            }
+
+            $code = wp_remote_retrieve_response_code( $response );
+
+            // Success (2xx) — return immediately.
+            if ( $code >= 200 && $code < 300 ) {
+                return $response;
+            }
+
+            // Stale/revoked token — clear cache and retry with a fresh token.
+            if ( in_array( (int) $code, [ 401, 403 ], true ) ) {
+                $this->clear_token_cache();
+                if ( $attempt < $max_attempts ) {
+                    continue;
+                }
+                break;
+            }
+
+            // Cloudflare / server-side 5xx — pause then retry.
+            if ( $code >= 500 ) {
+                if ( $attempt < $max_attempts ) {
+                    sleep( $attempt ); // 1s, 2s back-off
+                    continue;
+                }
+                break;
+            }
+
+            // 4xx (other than 401/403) — don't retry; the request itself is bad.
+            break;
+        }
+
+        return $last_response;
+    }
+
+    /**
+     * Make a single authenticated request to the Pathao API.
      *
      * @since 1.0.0
      * @param string $method
@@ -563,26 +631,29 @@ class ODRPLT_Courier_Pathao implements ODRPLT_Courier_Interface {
     private function request( string $method, string $endpoint, array $body = [], string $token = '' ) {
         $url  = $this->get_api_base() . $endpoint;
         $args = [
-            'method'  => strtoupper( $method ),
-            'timeout' => 30,
-            'headers' => [
+            'method'    => strtoupper( $method ),
+            'timeout'   => 45,
+            'sslverify' => true,
+            'headers'   => [
                 'Authorization' => 'Bearer ' . $token,
                 'Content-Type'  => 'application/json',
                 'Accept'        => 'application/json',
             ],
         ];
 
-        // Encode body for mutating requests
+        // Encode body for mutating requests.
         if ( in_array( strtoupper( $method ), [ 'POST', 'PUT', 'PATCH' ], true ) && ! empty( $body ) ) {
             $args['body'] = wp_json_encode( $body );
         }
 
         $response = wp_remote_request( $url, $args );
 
-        // Physical file logging for diagnostics
+        // Diagnostic logging.
         if ( class_exists( 'ODRPLT_Logger' ) ) {
             $code      = is_wp_error( $response ) ? 500 : wp_remote_retrieve_response_code( $response );
-            $resp_body = is_wp_error( $response ) ? [ 'error' => $response->get_error_message() ] : json_decode( wp_remote_retrieve_body( $response ), true );
+            $resp_body = is_wp_error( $response )
+                ? [ 'error' => $response->get_error_message() ]
+                : json_decode( wp_remote_retrieve_body( $response ), true );
             ODRPLT_Logger::log_courier_call( 'pathao', $endpoint, $body, $resp_body, (int) $code );
         }
 

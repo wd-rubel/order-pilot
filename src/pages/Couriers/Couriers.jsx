@@ -5,7 +5,7 @@
 import { useState, useEffect } from '@wordpress/element';
 import apiFetch from '@wordpress/api-fetch';
 
-const { isPro } = window.orderPilot || {};
+
 
 export default function Couriers() {
 	const [ couriers, setCouriers ]   = useState( [] );
@@ -109,14 +109,7 @@ export default function Couriers() {
 		<div>
 			<div className="odrplt-page-header">
 				<h1>🚚 Couriers</h1>
-				<p>
-					Connect and manage your courier services.
-					{ ! isPro && (
-						<span style={ { marginLeft: 8, color: 'var(--odrplt-warning)' } }>
-							Free plan: connect up to 2 couriers.
-						</span>
-					) }
-				</p>
+				<p>Connect and manage your courier services.</p>
 			</div>
 
 			{ notice && (

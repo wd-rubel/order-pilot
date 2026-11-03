@@ -4,7 +4,7 @@
 export default function ProGate( { feature = 'This feature', benefits = [] } ) {
 	const defaultBenefits = [
 		'✅ Advanced Fraud Detection',
-		'✅ Unlimited Courier Connections',
+		'✅ Courier Rule Automation',
 		'✅ Bulk Order Submission',
 		'✅ Courier Status Sync',
 		'✅ Meta Conversions API',

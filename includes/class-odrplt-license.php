@@ -142,7 +142,7 @@ class ODRPLT_License {
     /**
      * Get the maximum number of courier connections allowed by the current plan.
      *
-     * Free: 2  |  Pro: unlimited (PHP_INT_MAX)
+     * Free: unlimited (PHP_INT_MAX)  |  Filterable via order_pilot_max_couriers
      *
      * @since 1.0.0
      * @return int
@@ -151,12 +151,12 @@ class ODRPLT_License {
         /**
          * Filter: maximum number of active courier connections.
          *
-         * Pro plugin hooks here to return PHP_INT_MAX.
+         * Allows all courier channels by default on the free plan.
          *
          * @since 1.0.0
-         * @param int $max Default 2 for free plan.
+         * @param int $max Default unlimited (PHP_INT_MAX).
          */
-        return (int) apply_filters( 'order_pilot_max_couriers', 2 );
+        return (int) apply_filters( 'order_pilot_max_couriers', PHP_INT_MAX );
     }
 
     /**

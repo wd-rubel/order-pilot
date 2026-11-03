@@ -139,7 +139,7 @@ class ODRPLT_Courier_Manager {
 
     /**
      * Connect a courier (add to the active list).
-     * Enforces the free-plan max courier limit.
+     * Enforces the max courier limit if configured.
      *
      * @since 1.0.0
      * @param string $slug
@@ -157,7 +157,7 @@ class ODRPLT_Courier_Manager {
         }
 
         $max = $this->license->max_couriers();
-        if ( count( $connected ) >= $max ) {
+        if ( $max > 0 && $max !== PHP_INT_MAX && count( $connected ) >= $max ) {
             return new \WP_Error(
                 'courier_limit_reached',
                 sprintf(

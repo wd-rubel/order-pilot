@@ -561,11 +561,6 @@ function CouriersSettings({ settings = {}, setSettings, onSave, saving }) {
 				</h3>
 				<p style={{ fontSize: 13, color: 'var(--odrplt-text-muted)', margin: 0 }}>
 					Connect and configure your Bangladesh courier accounts to enable one-click order dispatching and live status syncing.
-					{!isPro && (
-						<span style={{ marginLeft: 8, color: '#b27200', fontWeight: 600 }}>
-							(Free plan: up to 2 active couriers)
-						</span>
-					)}
 				</p>
 			</div>
 

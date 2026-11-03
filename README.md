@@ -49,7 +49,7 @@ The Free version should provide enough functionality to be genuinely useful, whi
 - Support Steadfast
 - Support Pathao
 - Support RedX
-- User can connect **any 2 couriers**
+- User can connect all supported couriers
 - One-click send order to courier
 - Customer information mapping
 - Product/order information mapping
@@ -568,7 +568,7 @@ Available Couriers
 ✓ Pathao
 ✓ RedX
 
-You can connect any 2 couriers.
+You can connect all supported couriers.
 ```
 
 Pro:
@@ -665,7 +665,7 @@ Logs should have filtering and search capabilities.
 
 Includes:
 
-- Any 2 courier connections
+- All supported courier connections
 - One-click courier order
 - Basic order management
 - Meta Pixel
